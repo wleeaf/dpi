@@ -1,5 +1,4 @@
 """Exercise the native Mac engine with real HTTP and TLS through SOCKS5."""
-import http.server
 import itertools
 import os
 from pathlib import Path
@@ -7,7 +6,6 @@ import socket
 import ssl
 import subprocess
 import tempfile
-import threading
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,21 +14,12 @@ if not ENGINE.exists():
     ENGINE = ROOT / "bin/tpws"  # Extracted release archive.
 
 
-class Handler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"dpi-macos-relay-ok")
-
-    def log_message(self, *_):
-        pass
-
-
 def tunnel(proxy_port, destination_port):
     stream = socket.create_connection(("127.0.0.1", proxy_port), timeout=10)
     stream.sendall(b"\x05\x01\x00")
     assert stream.recv(2) == b"\x05\x00", "SOCKS negotiation failed"
-    stream.sendall(b"\x05\x01\x00\x01\x7f\x00\x00\x01" + destination_port.to_bytes(2, "big"))
+    host = b"github.com"
+    stream.sendall(b"\x05\x01\x00\x03" + bytes([len(host)]) + host + destination_port.to_bytes(2, "big"))
     response = b""
     while len(response) < 10:
         chunk = stream.recv(10 - len(response))
@@ -40,30 +29,24 @@ def tunnel(proxy_port, destination_port):
     return stream
 
 
-def request(stream):
+def request(stream, secure=False):
     with stream:
-        stream.sendall(b"GET / HTTP/1.1\r\nHost: discord.com\r\nConnection: close\r\n\r\n")
+        stream.sendall(b"GET /robots.txt HTTP/1.1\r\nHost: github.com\r\nConnection: close\r\n\r\n")
         response = b""
         while chunk := stream.recv(4096):
             response += chunk
-    assert b"200 OK" in response and response.endswith(b"dpi-macos-relay-ok"), response
+    if secure:
+        assert b"200 OK" in response and b"user-agent" in response.lower(), response[:500]
+    else:
+        assert b"301" in response and b"https://github.com/robots.txt" in response, response[:500]
 
 
 def main():
     with tempfile.TemporaryDirectory(prefix="dpi-mac-network-") as tmp:
         work = Path(tmp)
-        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
-                        "-subj", "/CN=discord.com", "-addext", "subjectAltName=DNS:discord.com",
-                        "-keyout", str(work / "key.pem"), "-out", str(work / "cert.pem")],
-                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        plain = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        secure = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        server_context.load_cert_chain(work / "cert.pem", work / "key.pem")
-        secure.socket = server_context.wrap_socket(secure.socket, server_side=True)
-        for server in (plain, secure):
-            threading.Thread(target=server.serve_forever, daemon=True).start()
-        context = ssl.create_default_context(cafile=str(work / "cert.pem"))
+        # Upstream intentionally refuses SOCKS targets on local interfaces.
+        # Exercise public HTTP/TLS with normal certificate verification.
+        context = ssl.create_default_context()
         try:
             for strategy in ("default", "split"):
                 with socket.socket() as probe:
@@ -86,8 +69,11 @@ def main():
                                     break
                             except OSError:
                                 time.sleep(.1)
-                        request(tunnel(port, plain.server_port))
-                        request(context.wrap_socket(tunnel(port, secure.server_port), server_hostname="discord.com"))
+                        request(tunnel(port, 80))
+                        request(context.wrap_socket(tunnel(port, 443), server_hostname="github.com"), secure=True)
+                    except Exception:
+                        print((work / "engine.log").read_text())
+                        raise
                     finally:
                         process.terminate()
                         try:
@@ -103,9 +89,7 @@ def main():
                 # It needs root on macOS to open /dev/pf.
                 subprocess.run(["sudo", "env", f"DPI_CONFIG={config}", "/bin/bash", str(runtime), "check"], check=True)
         finally:
-            for server in (plain, secure):
-                server.shutdown()
-                server.server_close()
+            pass
     print("macOS HTTP, TLS, SOCKS forwarding and production presets passed.")
 
 
