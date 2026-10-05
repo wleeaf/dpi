@@ -77,7 +77,7 @@ Install the APK and allow installation from your browser/file manager if Android
 - **Encrypted DNS (Cloudflare):** enabled by default for DNS queries entering the VPN. Turn it off if you need your own resolver behavior. Applications using their own encrypted resolver retain that resolver.
 - **Disconnect:** available in the app and its notification. Android supports one active VPN at a time; another VPN or VPN-based firewall will conflict with DPI.
 
-**Android has more limited bypass capabilities than desktop.** The app splits TCP writes and optionally TLS ClientHello records. It forwards UDP, including voice and QUIC, unchanged; it cannot apply zapret's fake UDP packet techniques without root. Discord login or voice may still fail on networks requiring those techniques. Do not treat a connected indicator as proof that Discord works on your ISP.
+**Android has more limited bypass capabilities than Windows/Linux.** The app splits TCP writes and optionally TLS ClientHello records. It forwards UDP, including voice and QUIC, unchanged; it cannot apply zapret's fake UDP packet techniques without root. Discord login or voice may still fail on networks requiring those techniques. Do not treat a connected indicator as proof that Discord works on your ISP.
 
 The VPN adapter connects to a proxy on the phone itself, then to each destination directly. HTTPS certificates use normal Android validation; the app does not decrypt your HTTPS traffic or log it. Cloudflare receives DNS queries when encrypted DNS is enabled. ICMP and router forwarding are outside this app's scope. If Android stops the app in the background, check its battery settings and reconnect; always-on/lockdown VPN mode is not supported.
 

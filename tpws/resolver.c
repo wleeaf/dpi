@@ -219,13 +219,15 @@ bool resolver_init(int threads, int fd_signal_pipe)
 
 	pthread_attr_t attr;
 	if (pthread_attr_init(&attr)) goto ex;
-	// set minimum thread stack size
-
+	// Darwin's getaddrinfo can exceed a 32 KiB stack (notably on Intel).
+	// Keep Apple's default worker stack size instead of the small Unix limit.
+#ifndef __APPLE__
 	if (pthread_attr_setstacksize(&attr,PTHREAD_STACK_MIN>32768 ? PTHREAD_STACK_MIN : 32768))
 	{
 		pthread_attr_destroy(&attr);
 		goto ex;
 	}
+#endif
 
 	for(t=0, resolver.threads=threads ; t<threads ; t++)
 	{

@@ -99,7 +99,7 @@ jobs:
 
           Restart Discord after connecting. Desktop updates preserve existing settings.
           Linux requires systemd, nftables, and glibc 2.35+; runtime libraries install automatically with apt/dnf/pacman.
-          Android applies TCP splitting/TLS record fragmentation; UDP is forwarded unchanged, so voice bypass is more limited than desktop.
+          Android applies TCP splitting/TLS record fragmentation; UDP is forwarded unchanged, so voice bypass is more limited than Windows/Linux.
           macOS also uses TCP/TLS splitting and leaves UDP unchanged. It preserves existing PF rules and settings.
           See the English README for configuration and troubleshooting. Strategies depend on your ISP.
           `SHA256SUMS` covers all downloads.

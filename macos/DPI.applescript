@@ -8,14 +8,14 @@ on run
             if actionName is "Connect / apply settings" then
                 set trafficChoice to choose from list {"Discord", "All websites"} with title "DPI traffic" default items {"Discord"}
                 if trafficChoice is not false then
-                    set strategyChoice to choose from list {"Default (TCP + TLS splitting)", "Alternate (TCP splitting)"} with title "DPI strategy" default items {"Default (TCP + TLS splitting)"}
+                    set strategyChoice to choose from list {"Default", "Alternate"} with title "DPI strategy" with prompt "Try Alternate if connections fail with Default." default items {"Default"}
                     if strategyChoice is not false then
                         set trafficValue to "discord"
                         if item 1 of trafficChoice is "All websites" then set trafficValue to "all"
                         set strategyValue to "default"
-                        if item 1 of strategyChoice is "Alternate (TCP splitting)" then set strategyValue to "split"
+                        if item 1 of strategyChoice is "Alternate" then set strategyValue to "split"
                         do shell script "/opt/dpi/dpi configure " & trafficValue & " " & strategyValue with administrator privileges
-                        display dialog "Connected. Restart Discord. UDP voice bypass is limited on macOS." with title "DPI" buttons {"OK"} default button "OK"
+                        display dialog "Connected. Restart Discord. Calls may still fail on some networks." with title "DPI" buttons {"OK"} default button "OK"
                     end if
                 end if
             else if actionName is "Disconnect" then
