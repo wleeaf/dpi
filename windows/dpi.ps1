@@ -75,6 +75,17 @@ function Stop-Dpi {
         $service.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(15))
     }
 }
+function Remove-DpiDriver {
+    # WinDivert remains loaded after its final application handle closes.
+    # Only unload drivers registered from this installation's exact path.
+    $expected = Join-Path $Target 'bin\WinDivert64.sys'
+    foreach ($driver in @(Get-CimInstance Win32_SystemDriver -Filter "Name LIKE 'WinDivert%'")) {
+        $path = $driver.PathName.Trim('"').Replace('\??\', '').Replace('\\?\', '')
+        if (-not $path.Equals($expected, [StringComparison]::OrdinalIgnoreCase)) { continue }
+        if ($driver.State -ne 'Stopped') { Invoke-Sc -Arguments @('stop', $driver.Name) }
+        Invoke-Sc -Arguments @('delete', $driver.Name)
+    }
+}
 function Test-Engine {
     param([string]$Base, [hashtable]$Settings)
     $binary = Join-Path $Base 'bin\winws.exe'
@@ -134,6 +145,7 @@ function Install-Dpi {
     $settingsPath = if (Test-Path -LiteralPath $Config) { $Config } else { Join-Path $PSScriptRoot 'dpi.conf.example' }
     Test-Engine -Base $PSScriptRoot -Settings (Read-DpiSettings -Path $settingsPath)
     Stop-Dpi
+    Remove-DpiDriver
     New-Item -ItemType Directory -Path $Target, $Data -Force | Out-Null
     Protect-Data
     foreach ($folder in @('bin', 'profiles', 'files', 'docs')) {
@@ -224,6 +236,7 @@ try {
         }
         'uninstall' {
             Assert-Installed; Stop-Dpi
+            Remove-DpiDriver
             Invoke-Sc -Arguments @('delete', $ServiceName)
             Remove-Item -LiteralPath (Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'DPI.lnk') -ErrorAction SilentlyContinue
             Remove-Item -LiteralPath $Target -Recurse -Force
