@@ -33,14 +33,16 @@ if ($Command -notin @('status', 'doctor', 'args') -and -not (Test-Admin)) {
 }
 
 function Invoke-Sc {
-    param([string[]]$Arguments)
+    param([string[]]$Arguments, [switch]$IgnoreMissing)
     $info = [Diagnostics.ProcessStartInfo]::new()
     $info.FileName = "$env:SystemRoot\System32\sc.exe"
     $info.Arguments = ConvertTo-DpiWindowsCommandLine $Arguments
     $info.UseShellExecute = $false
     $process = [Diagnostics.Process]::Start($info)
     $process.WaitForExit()
-    if ($process.ExitCode -ne 0) { throw "Service configuration failed (sc.exe exit $($process.ExitCode))." }
+    if ($process.ExitCode -ne 0 -and -not ($IgnoreMissing -and $process.ExitCode -eq 1060)) {
+        throw "Service configuration failed (sc.exe exit $($process.ExitCode))."
+    }
     $process.Dispose()
 }
 function Assert-NoConflict {
@@ -82,8 +84,9 @@ function Remove-DpiDriver {
     foreach ($driver in @(Get-CimInstance Win32_SystemDriver -Filter "Name LIKE 'WinDivert%'")) {
         $path = $driver.PathName.Trim('"').Replace('\??\', '').Replace('\\?\', '')
         if (-not $path.Equals($expected, [StringComparison]::OrdinalIgnoreCase)) { continue }
-        if ($driver.State -ne 'Stopped') { Invoke-Sc -Arguments @('stop', $driver.Name) }
-        Invoke-Sc -Arguments @('delete', $driver.Name)
+        if ($driver.State -ne 'Stopped') { Invoke-Sc -Arguments @('stop', $driver.Name) -IgnoreMissing }
+        # WinDivert may already have marked its own service for deletion.
+        Invoke-Sc -Arguments @('delete', $driver.Name) -IgnoreMissing
     }
 }
 function Test-Engine {

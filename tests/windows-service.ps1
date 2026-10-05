@@ -17,7 +17,8 @@ try {
     $config = Join-Path $env:ProgramData 'DPI/dpi.conf'
     [IO.File]::WriteAllText($config, "PROFILE=all`nSTRATEGY=split`nVOICE=no`n")
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $manager -Command install -NoStart
-    if ($LASTEXITCODE -ne 0 -or [IO.File]::ReadAllText($config) -notmatch 'STRATEGY=split') { throw 'Upgrade lost configuration' }
+    if ($LASTEXITCODE -ne 0) { throw 'Upgrade failed' }
+    if ([IO.File]::ReadAllText($config) -notmatch 'STRATEGY=split') { throw 'Upgrade lost configuration' }
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $manager -Command disable
     if ($LASTEXITCODE -ne 0 -or (Get-Service DpiBypass).Status -ne 'Stopped') { throw 'Disable failed' }
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $manager -Command start
