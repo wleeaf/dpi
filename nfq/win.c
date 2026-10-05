@@ -1,11 +1,15 @@
 #ifdef __CYGWIN__
 
 #include <windows.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "win.h"
 #include "nfqws.h"
 
-#ifndef ZAPRET_SERVICE_NAME
+#ifdef ZAPRET_SERVICE_NAME
+#define ZAPRET_SERVICE_LOG
+#else
 #define ZAPRET_SERVICE_NAME winws
 #endif
 #define SERVICE_STRING_(value) #value
@@ -72,6 +76,20 @@ void service_main(int argc __attribute__((unused)), char *argv[] __attribute__((
 	}
 
 	SetServiceStatus(hStatus, &ServiceStatus);
+
+#ifdef ZAPRET_SERVICE_LOG
+	// SCM provides no console. Preserve startup errors for troubleshooting.
+	char logpath[MAX_PATH];
+	DWORD len = GetEnvironmentVariableA("ProgramData", logpath, sizeof(logpath));
+	if (len && len + sizeof("\\DPI\\service.log") <= sizeof(logpath))
+	{
+		strcat(logpath, "\\DPI\\service.log");
+		freopen(logpath, "a", stdout);
+		freopen(logpath, "a", stderr);
+		setvbuf(stdout, NULL, _IOLBF, 0);
+		setvbuf(stderr, NULL, _IOLBF, 0);
+	}
+#endif
 
 	// Calling main with saved argc & argv
 	ServiceStatus.dwWin32ExitCode = (DWORD)main(service_argc, service_argv);

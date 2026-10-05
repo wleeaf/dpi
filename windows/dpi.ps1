@@ -97,9 +97,9 @@ function Update-ServiceConfiguration {
     $settings = Read-DpiSettings -Path $Config
     Test-Engine -Base $Target -Settings $settings
     $arguments = @(Get-DpiEngineArguments -Settings $settings -Base $Target)
-    $argumentFile = Join-Path $Data 'engine.conf'
-    [IO.File]::WriteAllText($argumentFile, (ConvertTo-DpiArgumentFile $arguments), [Text.UTF8Encoding]::new($false))
-    $binaryPath = '"' + (Join-Path $Target 'bin\winws.exe') + '" "@' + $argumentFile.Replace('\', '/') + '"'
+    # Cygwin wordexp in @files depends on a shell and user-specific mounts.
+    # SCM runs as LocalSystem; pass literal arguments for standalone installs.
+    $binaryPath = ConvertTo-DpiWindowsCommandLine (@((Join-Path $Target 'bin\winws.exe')) + $arguments)
     if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
         Invoke-Sc -Arguments @('config', $ServiceName, 'binPath=', $binaryPath)
     } else {

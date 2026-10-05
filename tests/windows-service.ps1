@@ -27,6 +27,8 @@ try {
     if (-not (Test-Path -LiteralPath $config)) { throw 'Uninstall did not retain user settings' }
     Write-Host 'Windows service install, start, upgrade, disable, and uninstall checks passed.'
 } finally {
+    $log = Join-Path $env:ProgramData 'DPI/service.log'
+    if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Tail 40 }
     $service = Get-Service DpiBypass -ErrorAction SilentlyContinue
     if ($service) { Stop-Service DpiBypass -ErrorAction SilentlyContinue; & sc.exe delete DpiBypass | Out-Null }
     Remove-Item -LiteralPath $work -Recurse -Force
