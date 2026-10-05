@@ -1,0 +1,6 @@
+#!/bin/bash
+set -euo pipefail
+if [[ -e /opt/dpi || -e /Library/LaunchDaemons/io.github.wleeaf.dpi.plist || -e /Applications/DPI.app ]]; then
+    [[ -x /opt/dpi/dpi && -x /opt/dpi/bin/tpws ]] || { echo 'Another installation occupies the DPI paths.' >&2; exit 1; }
+    /opt/dpi/dpi stop
+fi

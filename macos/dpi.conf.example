@@ -1,0 +1,4 @@
+# macOS uses TCP/TLS splitting. UDP voice traffic is unchanged.
+PROFILE=discord
+STRATEGY=default
+VOICE=no

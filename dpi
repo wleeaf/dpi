@@ -2,6 +2,9 @@
 set -euo pipefail
 
 BASE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+if [[ $(uname -s) == Darwin ]]; then
+    exec /bin/bash "$BASE/macos/dpi.sh" "$@"
+fi
 TARGET="/opt/dpi"
 CONFIG_DIR="/etc/dpi"
 UNIT="/etc/systemd/system/dpi.service"

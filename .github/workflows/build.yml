@@ -10,6 +10,10 @@ permissions:
   contents: read
 
 jobs:
+  macos:
+    uses: ./.github/workflows/macos.yml
+    with:
+      version: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'dev' }}
   windows:
     uses: ./.github/workflows/windows.yml
     with:
@@ -42,7 +46,7 @@ jobs:
           BUILD_VERSION: ${{ github.ref_name }}
           BUILD_COMMIT: ${{ github.sha }}
         run: |
-          shellcheck dpi scripts/*.sh tests/*.sh enable.sh disable.sh nft-start.sh nft-stop.sh
+          shellcheck dpi scripts/*.sh tests/*.sh macos/*.sh macos/Install.command macos/pkg-scripts/* enable.sh disable.sh nft-start.sh nft-stop.sh
           CFLAGS="-DZAPRET_GH_VER=$BUILD_VERSION -DZAPRET_GH_HASH=$BUILD_COMMIT" make -C nfq
           python3 -m unittest discover -s tests -v
           sudo unshare --net bash tests/firewall.sh
@@ -60,7 +64,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build, windows, android]
+    needs: [build, windows, android, macos]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -86,6 +90,7 @@ jobs:
 
           - **Windows 10/11 x64:** extract the ZIP, run `Install.cmd`, accept the administrator prompt. Open **DPI** from the Start menu to change settings.
           - **Android 10+:** install the APK, open **DPI**, tap **Connect**, and accept Android's VPN prompt. No root or remote server needed.
+          - **macOS 15+ (Intel and Apple Silicon):** open the universal PKG installer, then open **DPI** in Applications. Mac downloads are not Developer ID signed/notarized yet; if blocked, approve this download through Privacy & Security → Open Anyway. A terminal archive is also included (`sudo ./dpi install`).
           - **Linux:** extract the x86_64 or arm64 archive, open a terminal in it, and run:
 
           ```sh
@@ -95,10 +100,11 @@ jobs:
           Restart Discord after connecting. Desktop updates preserve existing settings.
           Linux requires systemd, nftables, and glibc 2.35+; runtime libraries install automatically with apt/dnf/pacman.
           Android applies TCP splitting/TLS record fragmentation; UDP is forwarded unchanged, so voice bypass is more limited than desktop.
+          macOS also uses TCP/TLS splitting and leaves UDP unchanged. It preserves existing PF rules and settings.
           See the English README for configuration and troubleshooting. Strategies depend on your ISP.
           `SHA256SUMS` covers all downloads.
           EOF
           options=()
           if [[ "$RELEASE_TAG" == *-* ]]; then options+=(--prerelease); fi
-          gh release create "$RELEASE_TAG" dist/dpi-*.tar.gz dist/dpi-*.zip dist/dpi-*.apk dist/SHA256SUMS \
+          gh release create "$RELEASE_TAG" dist/dpi-*.tar.gz dist/dpi-*.zip dist/dpi-*.apk dist/dpi-*.pkg dist/SHA256SUMS \
             --verify-tag --title "DPI $RELEASE_TAG" --notes-file release-notes.md "${options[@]}"

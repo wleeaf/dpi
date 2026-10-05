@@ -1,6 +1,6 @@
 # Build and release
 
-The repository keeps upstream zapret engines and advanced tools, while easy setup lives in `dpi`, `scripts/`, `windows/`, and `android/`. Shared Discord domains live in `profiles/discord.txt`. Generated binaries, downloads, local settings, keys, and `dist/` are ignored.
+The repository keeps upstream zapret engines and advanced tools, while easy setup lives in `dpi`, `scripts/`, `windows/`, `macos/`, and `android/`. Shared Discord domains live in `profiles/discord.txt`. Generated binaries, downloads, local settings, keys, and `dist/` are ignored.
 
 ## Linux
 
@@ -42,6 +42,20 @@ python scripts/fetch-cygwin-sources.py C:/cygwin/etc/setup/installed.db
 ```
 
 The driver archive is checksum pinned. Matching Cygwin/zlib sources are checked against mirror metadata and included in the ZIP. The resulting `dist/dpi-dev-windows-x86_64.zip` includes all required runtime files; users do not install Cygwin separately. The native service smoke test is restricted to disposable CI runners because it installs and removes a real Windows service.
+
+## macOS
+
+Install Xcode Command Line Tools on macOS 15+:
+
+```sh
+bash scripts/build-macos.sh
+python3 tests/macos-network.py
+bash scripts/package-macos.sh dev
+```
+
+The engine is universal (Intel and Apple Silicon), links only SDK libraries, and uses ad hoc signing. Packaging creates a native PKG installer, a terminal archive, and an AppleScript controls app. Developer ID signing/notarization is not configured; users may need Open Anyway for downloaded Mac software. See [Mac instructions](MACOS.md).
+
+The reusable Mac workflow tests the same artifact on macOS 15 Apple Silicon, macOS 15 Intel, and macOS 26 Apple Silicon. Its real service test installs/upgrades the package, forwards HTTPS through PF, verifies configuration and unrelated firewall rules are preserved, disables/restarts, and uninstalls. It is restricted to disposable CI runners.
 
 ## Android
 
@@ -108,6 +122,6 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The release workflow builds native Linux x86_64/ARM64 archives, a Windows x64 ZIP, and a signed universal Android APK. It validates Linux install/firewall behavior, Windows presets and native service lifecycle, and Android relay/lint/emulator routing before publishing with combined `SHA256SUMS`. A hyphen in the tag marks a prerelease. Manual workflow runs create downloadable development artifacts without creating a release.
+The release workflow builds native Linux x86_64/ARM64 archives, a Windows x64 ZIP, universal Mac PKG/terminal downloads, and a signed universal Android APK. It validates Linux install/firewall behavior, Windows presets and native service lifecycle, Mac TCP/TLS forwarding and PF/service lifecycle, and Android relay/lint/emulator routing before publishing with combined `SHA256SUMS`. A hyphen in the tag marks a prerelease. Manual workflow runs create downloadable development artifacts without creating a release.
 
 These checks validate packaging and networking behavior, not success against an ISP's DPI appliance. Before calling a strategy verified, test Discord login, text, calls, DNS, and IPv4/IPv6 on the target network. Windows live behavior also needs a successful Windows CI run; Android real-device behavior needs device testing beyond the emulator.

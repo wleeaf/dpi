@@ -1,0 +1,67 @@
+name: macOS build and test
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        default: dev
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Universal build and macOS 15 Apple Silicon
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build universal engine
+        env:
+          DPI_VERSION_NAME: ${{ inputs.version }}
+          BUILD_COMMIT: ${{ github.sha }}
+        run: bash scripts/build-macos.sh
+      - name: Test native TCP and TLS forwarding
+        run: python3 tests/macos-network.py
+      - name: Package installer and terminal archive
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: bash scripts/package-macos.sh "$RELEASE_VERSION"
+      - name: Test native installer, PF routing and service lifecycle
+        run: bash tests/macos-service.sh dist/dpi-*-macos-universal.pkg
+      - name: Show startup logs on failure
+        if: failure()
+        run: sudo tail -n 80 /var/log/dpi.log || true
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dpi-macos-universal
+          path: |
+            dist/dpi-*-macos-universal.pkg
+            dist/dpi-*-macos-universal.tar.gz
+            dist/dpi-*-macos-universal.*.sha256
+          if-no-files-found: error
+  compatibility:
+    name: Test ${{ matrix.runner }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15-intel, macos-26]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: dpi-macos-universal
+          path: dist
+      - name: Validate and extract the same universal release
+        run: |
+          cd dist
+          shasum -a 256 --check dpi-*.sha256
+          tar -xzf dpi-*-macos-universal.tar.gz
+          mkdir -p ../macos/bin
+          cp dpi-*-macos-universal/bin/tpws ../macos/bin/
+      - name: Test native TCP and TLS forwarding
+        run: python3 tests/macos-network.py
+      - name: Test native installer, PF routing and service lifecycle
+        run: bash tests/macos-service.sh dist/dpi-*-macos-universal.pkg
+      - name: Show startup logs on failure
+        if: failure()
+        run: sudo tail -n 80 /var/log/dpi.log || true

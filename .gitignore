@@ -25,3 +25,4 @@ __pycache__/
 /android/*.keystore
 /windows/bin/
 /windows/third-party/
+/macos/bin/

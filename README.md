@@ -1,6 +1,6 @@
 # DPI
 
-Simple local DPI bypass for **Windows, Linux, and Android**, focused on Discord in Turkey. Desktop versions use [zapret](https://github.com/bol-van/zapret). Android uses a local VPN adapter and TCP/TLS splitting without root or a remote server.
+Simple local DPI bypass for **Windows, Linux, macOS, and Android**, focused on Discord in Turkey. Desktop versions use [zapret](https://github.com/bol-van/zapret). Android uses a local VPN adapter and TCP/TLS splitting without root or a remote server.
 
 Download your device's file from [Releases](https://github.com/wleeaf/dpi/releases/latest). Choose an attached ZIP, archive, or APK; GitHub's automatic source downloads do not contain built apps.
 
@@ -8,6 +8,7 @@ Download your device's file from [Releases](https://github.com/wleeaf/dpi/releas
 | --- | --- | --- |
 | Windows 10/11 · Intel/AMD x64 | `dpi-vX.Y.Z-windows-x86_64.zip` | Extract → run **Install.cmd** → accept the administrator prompt. |
 | Linux · x86_64 or ARM64 | `dpi-vX.Y.Z-linux-ARCH.tar.gz` | Extract → run **`sudo ./dpi install`** in the extracted folder. |
+| macOS 15+ · Intel or Apple Silicon | `dpi-vX.Y.Z-macos-universal.pkg` | Open the installer → open **DPI** in Applications. |
 | Android 10+ · ARM or Intel | `dpi-vX.Y.Z-android.apk` | Install → open **DPI** → tap **Connect** → accept the VPN prompt. |
 
 Restart Discord after connecting. These tools keep your normal IP address. A working bypass depends on your ISP; DNS poisoning and IP blocks may require other measures. The supplied presets have not been verified on every Turkish ISP.
@@ -60,6 +61,14 @@ sudo dpi uninstall      # Remove the app; preserve settings
 
 Updates use `sudo ./dpi install` from the new release and preserve settings. DNS is unchanged by default. On systems using systemd-resolved, `sudo dpi dns on` opts into Cloudflare DNS over TLS; `sudo dpi dns off` removes DPI's override. See [Linux setup and troubleshooting](docs/LINUX.md) for details, staging installs, DNS, firewall behavior, and migration from the old installation.
 
+## macOS
+
+Open the universal PKG installer and follow its prompts. It installs **DPI** in Applications and enables startup at boot. The controls let you connect, choose Discord or all websites, try the alternate TCP strategy, disconnect, or disable startup. Updates preserve `/etc/dpi/dpi.conf`. No Homebrew or Rosetta is required.
+
+Mac downloads are **not Developer ID signed/notarized yet**. If macOS blocks a download, approve it through **System Settings → Privacy & Security → Open Anyway**. A terminal archive is also available: extract it and run `sudo ./dpi install`.
+
+macOS uses TCP splitting and optional TLS record splitting. **UDP voice and QUIC remain unchanged**, so it cannot apply Linux/Windows fake UDP techniques. It preserves existing PF rules, owns one child anchor, and removes redirection on disconnect. DNS settings are unchanged. See [Mac setup and troubleshooting](docs/MACOS.md) for commands, custom firewalls, Internet Sharing limitations, and uninstall.
+
 ## Android
 
 Install the APK and allow installation from your browser/file manager if Android asks. Open **DPI**, tap **Connect**, and accept Android's VPN permission. No root, terminal, server address, or Discord proxy configuration is needed. By default only the installed Discord app (`com.discord`) enters the local VPN. Select **All apps** for browsers or other apps.
@@ -84,7 +93,7 @@ sha256sum --ignore-missing --check SHA256SUMS
 
 On Windows, use `Get-FileHash path-to-download.zip -Algorithm SHA256` and compare it with the corresponding entry.
 
-[Build and maintainer instructions](docs/DEVELOPMENT.md) cover local builds, checks, and the one-time Android signing setup. Once signing secrets are configured, pushing a `vX.Y.Z` tag builds, tests, and publishes all three platforms. Manual workflow runs produce development artifacts without publishing. CI preview APKs are clearly named `android-preview.apk`.
+[Build and maintainer instructions](docs/DEVELOPMENT.md) cover local builds, checks, and the one-time Android signing setup. Once Android signing secrets are configured, pushing a `vX.Y.Z` tag builds, tests, and publishes all four platforms. Manual workflow runs produce development artifacts without publishing. CI preview APKs are clearly named `android-preview.apk`.
 
 ## License and credits
 
