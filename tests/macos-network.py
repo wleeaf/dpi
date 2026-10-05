@@ -52,7 +52,7 @@ def main():
                 with socket.socket() as probe:
                     probe.bind(("127.0.0.1", 0))
                     port = probe.getsockname()[1]
-                args = [str(ENGINE), "--socks", f"--port={port}", "--bind-addr=127.0.0.1",
+                args = [str(ENGINE), "--debug=1", "--socks", f"--port={port}", "--bind-addr=127.0.0.1",
                         "--split-pos=method+2,1,midsld"]
                 if os.geteuid() == 0:
                     args.append("--user=root")
@@ -72,7 +72,8 @@ def main():
                         request(tunnel(port, 80))
                         request(context.wrap_socket(tunnel(port, 443), server_hostname="github.com"), secure=True)
                     except Exception:
-                        print((work / "engine.log").read_text())
+                        print("Engine exit status:", process.poll())
+                        print((work / "engine.log").read_text()[-18000:])
                         raise
                     finally:
                         process.terminate()
