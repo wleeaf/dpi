@@ -26,6 +26,7 @@ install -m 644 "$BASE/README.md" "$BASE/LICENSE" "$ROOT/"
 /usr/bin/defaults write "$ROOT/DPI.app/Contents/Info" CFBundleShortVersionString "$PACKAGE_VERSION"
 /usr/bin/plutil -lint "$ROOT/DPI.app/Contents/Info.plist"
 /usr/bin/codesign --force --sign - "$ROOT/DPI.app"
+/usr/bin/lipo "$ROOT/DPI.app/Contents/MacOS/applet" -verify_arch arm64 x86_64
 mkdir -p "$WORK/payload/opt/dpi" "$WORK/payload/Applications"
 /usr/bin/ditto "$ROOT" "$WORK/payload/opt/dpi"
 rm -rf "$WORK/payload/opt/dpi/DPI.app"

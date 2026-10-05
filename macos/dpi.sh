@@ -19,7 +19,20 @@ owned_service() {
 }
 stop() {
     root_required; owned_service
-    if launchctl print "system/$LABEL" >/dev/null 2>&1; then launchctl bootout "system/$LABEL"; fi
+    local description pid attempt
+    if description=$(launchctl print "system/$LABEL" 2>/dev/null); then
+        pid=$(printf '%s\n' "$description" | /usr/bin/awk '$1 == "pid" && $2 == "=" { print $3 }')
+        launchctl bootout "system/$LABEL"
+        # bootout can return while launchd is still terminating the job.
+        # Wait for its supervisor before cleanup or a new bootstrap.
+        if [[ "$pid" =~ ^[0-9]+$ ]]; then
+            for ((attempt=0; attempt<150; attempt++)); do
+                kill -0 "$pid" 2>/dev/null || break
+                sleep 0.1
+            done
+            if kill -0 "$pid" 2>/dev/null; then fail 'DPI did not stop within 15 seconds.'; fi
+        fi
+    fi
     [[ ! -x "$TARGET/macos/runtime.sh" ]] || "$TARGET/macos/runtime.sh" cleanup
 }
 start() {
@@ -27,8 +40,12 @@ start() {
     DPI_CONFIG="$CONFIG" "$TARGET/macos/runtime.sh" check
     stop
     launchctl enable "system/$LABEL"
-    launchctl bootstrap system "$PLIST"
     local attempt
+    for ((attempt=0; attempt<50; attempt++)); do
+        if launchctl bootstrap system "$PLIST"; then break; fi
+        sleep 0.2
+    done
+    launchctl print "system/$LABEL" >/dev/null || fail 'Could not register the DPI startup service.'
     for ((attempt=0; attempt<50; attempt++)); do
         if [[ -f /var/run/dpi-macos/ready ]] && /usr/bin/nc -z -w 1 127.0.0.1 988; then
             echo 'DPI connected. Restart Discord.'; return
