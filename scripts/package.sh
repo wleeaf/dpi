@@ -24,7 +24,7 @@ install -m 755 "$BASE/nfq/nfqws" "$ROOT/bin/nfqws"
 install -m 755 "$BASE/dpi" "$BASE/enable.sh" "$BASE/disable.sh" "$ROOT/"
 install -m 755 "$BASE/scripts/runtime.sh" "$ROOT/scripts/runtime.sh"
 install -m 644 "$BASE/README.md" "$BASE/LICENSE" "$BASE/dpi.conf.example" "$ROOT/"
-install -m 644 "$BASE/docs/LINUX.md" "$BASE/docs/DEVELOPMENT.md" "$ROOT/docs/"
+install -m 644 "$BASE/docs/LINUX.md" "$BASE/docs/MACOS.md" "$BASE/docs/DEVELOPMENT.md" "$ROOT/docs/"
 install -m 644 "$BASE/packaging/dpi.service" "$ROOT/packaging/"
 install -m 644 "$BASE/profiles/discord.txt" "$ROOT/profiles/"
 for payload in tls_clienthello_www_google_com quic_initial_www_google_com discord-ip-discovery-with-port; do

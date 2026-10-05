@@ -30,7 +30,7 @@ class SetupTests(unittest.TestCase):
         for name in ["scripts", "packaging", "profiles", "files/fake"]:
             shutil.copytree(REPO / name, self.release / name)
         (self.release / "docs").mkdir()
-        for name in ["LINUX.md", "DEVELOPMENT.md"]:
+        for name in ["LINUX.md", "MACOS.md", "DEVELOPMENT.md"]:
             shutil.copy2(REPO / "docs" / name, self.release / "docs" / name)
         (self.release / "bin").mkdir()
         shutil.copy2(ENGINE, self.release / "bin/nfqws")

@@ -143,7 +143,7 @@ install_dpi() {
     install -m 644 "$BASE/packaging/dpi.service" "$stage$UNIT"
     install -m 644 "$BASE/README.md" "$BASE/LICENSE" "$BASE/dpi.conf.example" "$stage$TARGET/"
     install -d "$stage$TARGET/docs"
-    install -m 644 "$BASE/docs/LINUX.md" "$BASE/docs/DEVELOPMENT.md" "$stage$TARGET/docs/"
+    install -m 644 "$BASE/docs/LINUX.md" "$BASE/docs/MACOS.md" "$BASE/docs/DEVELOPMENT.md" "$stage$TARGET/docs/"
     if [[ ! -e "$stage$CONFIG_DIR/dpi.conf" ]]; then
         install -m 644 "$BASE/dpi.conf.example" "$stage$CONFIG_DIR/dpi.conf"
     fi

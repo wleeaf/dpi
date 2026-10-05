@@ -11,5 +11,5 @@ cd "$BASE/tpws"
     ./*.c epoll-shim/src/*.c -lz -lpthread -o "$BASE/macos/bin/tpws"
 /usr/bin/strip "$BASE/macos/bin/tpws"
 /usr/bin/codesign --force --sign - "$BASE/macos/bin/tpws"
-/usr/bin/lipo -verify_arch arm64 x86_64 "$BASE/macos/bin/tpws"
+/usr/bin/lipo "$BASE/macos/bin/tpws" -verify_arch arm64 x86_64
 echo 'Built universal macOS engine.'

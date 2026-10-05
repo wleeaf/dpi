@@ -28,7 +28,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $Root 'windows/third-party') -Destination $Package -Recurse
     Copy-Item -LiteralPath (Join-Path $Root 'profiles') -Destination $Package -Recurse
     New-Item -ItemType Directory -Path (Join-Path $Package 'docs') -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $Root 'docs/LINUX.md'), (Join-Path $Root 'docs/DEVELOPMENT.md') -Destination (Join-Path $Package 'docs')
+    Copy-Item -LiteralPath (Join-Path $Root 'docs/LINUX.md'), (Join-Path $Root 'docs/MACOS.md'), (Join-Path $Root 'docs/DEVELOPMENT.md') -Destination (Join-Path $Package 'docs')
     $Payloads = Join-Path $Package 'files/fake'
     New-Item -ItemType Directory -Path $Payloads -Force | Out-Null
     foreach ($name in @('tls_clienthello_www_google_com', 'quic_initial_www_google_com', 'discord-ip-discovery-with-port')) {

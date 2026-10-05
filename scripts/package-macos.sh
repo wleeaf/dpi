@@ -19,7 +19,7 @@ install -m 755 "$BASE/macos/Install.command" "$ROOT/macos/"
 install -m 644 "$BASE/macos/dpi.conf.example" "$ROOT/macos/"
 install -m 644 "$BASE/packaging/io.github.wleeaf.dpi.plist" "$ROOT/packaging/"
 install -m 644 "$BASE/profiles/discord.txt" "$ROOT/profiles/"
-install -m 644 "$BASE/docs/MACOS.md" "$BASE/docs/DEVELOPMENT.md" "$ROOT/docs/"
+install -m 644 "$BASE/docs/MACOS.md" "$BASE/docs/LINUX.md" "$BASE/docs/DEVELOPMENT.md" "$ROOT/docs/"
 install -m 644 "$BASE/README.md" "$BASE/LICENSE" "$ROOT/"
 /usr/bin/osacompile -o "$ROOT/DPI.app" "$BASE/macos/DPI.applescript"
 /usr/bin/defaults write "$ROOT/DPI.app/Contents/Info" CFBundleIdentifier io.github.wleeaf.dpi.controls
