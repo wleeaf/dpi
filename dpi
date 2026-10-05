@@ -106,10 +106,15 @@ install_dpi() {
         # Check all selected settings/payloads before stopping an existing service.
         local validate
         validate=$(mktemp -d)
-        mkdir -p "$validate/bin" "$validate/scripts"
+        mkdir -p "$validate/bin" "$validate/scripts" "$validate/profiles" "$validate/files/fake"
         ln -s "$binary" "$validate/bin/nfqws"
-        ln -s "$BASE/profiles" "$validate/profiles"
-        ln -s "$BASE/files" "$validate/files"
+        # nfqws drops DAC capabilities even during root dry-runs. Copy inputs
+        # so releases extracted under a private home directory still validate.
+        install -m 644 "$BASE/profiles/discord.txt" "$validate/profiles/"
+        local validation_payload
+        for validation_payload in tls_clienthello_www_google_com quic_initial_www_google_com discord-ip-discovery-with-port; do
+            install -m 644 "$BASE/files/fake/$validation_payload.bin" "$validate/files/fake/"
+        done
         cp "$BASE/scripts/runtime.sh" "$validate/scripts/"
         local selected_config="$CONFIG_DIR/dpi.conf"
         [[ -f "$selected_config" ]] || selected_config="$BASE/dpi.conf.example"

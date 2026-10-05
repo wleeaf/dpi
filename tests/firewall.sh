@@ -9,8 +9,11 @@ export DPI_CONFIG="$WORK/dpi.conf" DPI_STATE="$WORK/state"
 mkdir -p "$WORK/runtime/bin" "$WORK/runtime/scripts"
 cp "$BASE/scripts/runtime.sh" "$WORK/runtime/scripts/"
 ln -s "$BASE/nfq/nfqws" "$WORK/runtime/bin/nfqws"
-ln -s "$BASE/profiles" "$WORK/runtime/profiles"
-ln -s "$BASE/files" "$WORK/runtime/files"
+install -d "$WORK/runtime/profiles" "$WORK/runtime/files/fake"
+install -m 644 "$BASE/profiles/discord.txt" "$WORK/runtime/profiles/"
+for payload in tls_clienthello_www_google_com quic_initial_www_google_com discord-ip-discovery-with-port; do
+    install -m 644 "$BASE/files/fake/$payload.bin" "$WORK/runtime/files/fake/"
+done
 RUNTIME="$WORK/runtime/scripts/runtime.sh"
 
 # A separate table proves stop never flushes unrelated firewall configuration.
