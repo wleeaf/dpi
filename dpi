@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+ENTRY=${BASH_SOURCE[0]}
+while [[ -L "$ENTRY" ]]; do
+    ENTRY_DIR=$(cd -- "$(dirname -- "$ENTRY")" && pwd)
+    ENTRY=$(readlink "$ENTRY")
+    [[ "$ENTRY" == /* ]] || ENTRY="$ENTRY_DIR/$ENTRY"
+done
+BASE=$(cd -- "$(dirname -- "$ENTRY")" && pwd)
 if [[ $(uname -s) == Darwin ]]; then
     exec /bin/bash "$BASE/macos/dpi.sh" "$@"
 fi

@@ -74,6 +74,13 @@ class SetupTests(unittest.TestCase):
         self.config.unlink()
         self.runtime("check", ok=False)
 
+    def test_install_via_relative_symlink_finds_its_release_files(self):
+        link = self.root / "dpi-shortcut"
+        link.symlink_to("release/dpi")
+        stage = self.root / "symlink-install"
+        self.run_command(str(link), "install", env=dict(self.env, DESTDIR=str(stage)))
+        self.assertTrue((stage / "opt/dpi/bin/nfqws").is_file())
+
     def test_discord_hosts_are_applied_to_each_web_protocol(self):
         args = self.runtime("args").stdout.splitlines()
         self.assertEqual(sum(arg.startswith("--hostlist=") for arg in args), 3)
