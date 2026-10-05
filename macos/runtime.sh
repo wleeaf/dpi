@@ -125,9 +125,10 @@ run() {
     fail "TCP proxy stopped; removing traffic redirection."
 }
 case "${1:-}" in
+    settings) load_config; printf '%s:%s\n' "$PROFILE" "$STRATEGY" ;;
     check|args) load_config; build_args; if [[ "$1" == check ]]; then "$ENGINE" --dry-run "${ARGS[@]}"; else printf '%s\n' "${ARGS[@]}"; fi ;;
     rules) rules ;;
     run) run ;;
     cleanup) [[ $EUID == 0 ]] || fail 'Run as administrator.'; cleanup ;;
-    *) fail 'Usage: runtime.sh {check|args|rules|run|cleanup}' ;;
+    *) fail 'Usage: runtime.sh {check|args|settings|rules|run|cleanup}' ;;
 esac

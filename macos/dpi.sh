@@ -108,6 +108,7 @@ case "${1:-help}" in
         start ;;
     status)
         if [[ -f /var/run/dpi-macos/ready ]] && /usr/bin/nc -z -w 1 127.0.0.1 988; then echo 'DPI connected'; else echo 'DPI disconnected'; fi ;;
+    settings) installed; DPI_CONFIG="$CONFIG" "$TARGET/macos/runtime.sh" settings ;;
     logs) tail -n 60 /var/log/dpi.log ;;
     doctor)
         installed

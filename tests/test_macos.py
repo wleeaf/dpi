@@ -31,6 +31,7 @@ class MacTests(unittest.TestCase):
             self.assertEqual("--tlsrec=sni" in result.stdout, strategy == "default")
             self.assertNotIn("--filter-udp", result.stdout)
             self.assertNotIn("--socks", result.stdout)
+            self.assertEqual(self.runtime("settings").stdout, f"{profile}:{strategy}\n")
 
     def test_injected_and_invalid_settings_are_rejected(self):
         for setting in ("PROFILE=$(touch BAD)", "PROFILE=unknown", "OTHER=yes", "VOICE=true", "profile=all"):

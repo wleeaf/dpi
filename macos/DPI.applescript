@@ -6,9 +6,16 @@ on run
         try
             set actionName to item 1 of choice
             if actionName is "Connect / apply settings" then
-                set trafficChoice to choose from list {"Discord", "All websites"} with title "DPI traffic" default items {"Discord"}
+                set trafficDefault to "Discord"
+                set strategyDefault to "Default"
+                try
+                    set savedSettings to do shell script "/opt/dpi/dpi settings"
+                    if savedSettings starts with "all:" then set trafficDefault to "All websites"
+                    if savedSettings ends with ":split" then set strategyDefault to "Alternate"
+                end try
+                set trafficChoice to choose from list {"Discord", "All websites"} with title "DPI traffic" default items {trafficDefault}
                 if trafficChoice is not false then
-                    set strategyChoice to choose from list {"Default", "Alternate"} with title "DPI strategy" with prompt "Try Alternate if connections fail with Default." default items {"Default"}
+                    set strategyChoice to choose from list {"Default", "Alternate"} with title "DPI strategy" with prompt "Try Alternate if connections fail with Default." default items {strategyDefault}
                     if strategyChoice is not false then
                         set trafficValue to "discord"
                         if item 1 of trafficChoice is "All websites" then set trafficValue to "all"

@@ -47,50 +47,47 @@ def main():
         # Upstream intentionally refuses SOCKS targets on local interfaces.
         # Exercise public HTTP/TLS with normal certificate verification.
         context = ssl.create_default_context()
-        try:
-            for strategy in ("default", "split"):
-                with socket.socket() as probe:
-                    probe.bind(("127.0.0.1", 0))
-                    port = probe.getsockname()[1]
-                args = [str(ENGINE), "--debug=2", "--socks", f"--port={port}", "--bind-addr=127.0.0.1",
-                        "--split-pos=method+2,1,midsld"]
-                if os.geteuid() == 0:
-                    args.append("--user=root")
-                if strategy == "default":
-                    args.append("--tlsrec=sni")
-                with (work / "engine.log").open("wb") as log:
-                    process = subprocess.Popen(args, stdout=log, stderr=log)
-                    try:
-                        for _ in range(100):
-                            if process.poll() is not None:
-                                raise AssertionError((work / "engine.log").read_text())
-                            try:
-                                with socket.create_connection(("127.0.0.1", port), timeout=.1):
-                                    break
-                            except OSError:
-                                time.sleep(.1)
-                        request(tunnel(port, 80))
-                        request(context.wrap_socket(tunnel(port, 443), server_hostname="github.com"), secure=True)
-                    except Exception:
-                        print("Engine exit status:", process.poll())
-                        print((work / "engine.log").read_text()[-18000:])
-                        raise
-                    finally:
-                        process.terminate()
+        for strategy in ("default", "split"):
+            with socket.socket() as probe:
+                probe.bind(("127.0.0.1", 0))
+                port = probe.getsockname()[1]
+            args = [str(ENGINE), "--debug=2", "--socks", f"--port={port}", "--bind-addr=127.0.0.1",
+                    "--split-pos=method+2,1,midsld"]
+            if os.geteuid() == 0:
+                args.append("--user=root")
+            if strategy == "default":
+                args.append("--tlsrec=sni")
+            with (work / "engine.log").open("wb") as log:
+                process = subprocess.Popen(args, stdout=log, stderr=log)
+                try:
+                    for _ in range(100):
+                        if process.poll() is not None:
+                            raise AssertionError((work / "engine.log").read_text())
                         try:
-                            process.wait(timeout=10)
-                        except subprocess.TimeoutExpired:
-                            process.kill()
-                            process.wait()
-            runtime = ROOT / "macos/runtime.sh"
-            for profile, strategy in itertools.product(("discord", "all"), ("default", "split")):
-                config = work / "dpi.conf"
-                config.write_text(f"PROFILE={profile}\nSTRATEGY={strategy}\nVOICE=no\n")
-                # Dry-run the actual production transparent-mode presets.
-                # It needs root on macOS to open /dev/pf.
-                subprocess.run(["sudo", "env", f"DPI_CONFIG={config}", "/bin/bash", str(runtime), "check"], check=True)
-        finally:
-            pass
+                            with socket.create_connection(("127.0.0.1", port), timeout=.1):
+                                break
+                        except OSError:
+                            time.sleep(.1)
+                    request(tunnel(port, 80))
+                    request(context.wrap_socket(tunnel(port, 443), server_hostname="github.com"), secure=True)
+                except Exception:
+                    print("Engine exit status:", process.poll())
+                    print((work / "engine.log").read_text()[-18000:])
+                    raise
+                finally:
+                    process.terminate()
+                    try:
+                        process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait()
+        runtime = ROOT / "macos/runtime.sh"
+        for profile, strategy in itertools.product(("discord", "all"), ("default", "split")):
+            config = work / "dpi.conf"
+            config.write_text(f"PROFILE={profile}\nSTRATEGY={strategy}\nVOICE=no\n")
+            # Dry-run the actual production transparent-mode presets.
+            # It needs root on macOS to open /dev/pf.
+            subprocess.run(["sudo", "env", f"DPI_CONFIG={config}", "/bin/bash", str(runtime), "check"], check=True)
     print("macOS HTTP, TLS, SOCKS forwarding and production presets passed.")
 
 
