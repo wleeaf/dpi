@@ -26,7 +26,7 @@ load_config() {
 }
 build_args() {
     # Bash 3.2 ships with macOS and treats empty arrays as unset with -u.
-    ARGS=(--user=root --enable-pf --port=988 --bind-addr=127.0.0.1 --bind-iface6=lo0 --bind-linklocal=force --filter-tcp=80)
+    ARGS=(--user=root --port=988 --bind-addr=127.0.0.1 --bind-iface6=lo0 --bind-linklocal=force --filter-tcp=80)
     [[ "$PROFILE" != discord ]] || ARGS+=("--hostlist=$BASE/profiles/discord.txt")
     ARGS+=(--split-pos=method+2 --new --filter-tcp=443)
     [[ "$PROFILE" != discord ]] || ARGS+=("--hostlist=$BASE/profiles/discord.txt")
