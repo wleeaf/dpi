@@ -52,7 +52,7 @@ def main():
                 with socket.socket() as probe:
                     probe.bind(("127.0.0.1", 0))
                     port = probe.getsockname()[1]
-                args = [str(ENGINE), "--debug=1", "--socks", f"--port={port}", "--bind-addr=127.0.0.1",
+                args = [str(ENGINE), "--debug=2", "--socks", f"--port={port}", "--bind-addr=127.0.0.1",
                         "--split-pos=method+2,1,midsld"]
                 if os.geteuid() == 0:
                     args.append("--user=root")

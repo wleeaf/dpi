@@ -835,8 +835,6 @@ static bool handle_unsent(tproxy_conn_t *conn)
 
 static bool proxy_mode_connect_remote(tproxy_conn_t *conn, struct tailhead *conn_list)
 {
-	int remote_fd;
-
 	if (params.debug>=1)
 	{
 		char ip_port[48];
@@ -850,9 +848,10 @@ static bool proxy_mode_connect_remote(tproxy_conn_t *conn, struct tailhead *conn
 		return false;
 	}
 
-	if (!(conn->partner = new_conn(remote_fd, true)))
+	// The socket is created below by connect_remote_conn. Passing an
+	// uninitialized descriptor here is undefined behavior under optimization.
+	if (!(conn->partner = new_conn(0, true)))
 	{
-		close(remote_fd);
 		DLOG_ERR("socks out-of-memory (1)\n");
 		socks_send_rep(conn->socks_ver, conn->fd, S5_REP_GENERAL_FAILURE);
 		return false;
