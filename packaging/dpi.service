@@ -1,0 +1,20 @@
+[Unit]
+Description=DPI bypass for Discord and blocked websites
+Documentation=https://github.com/wleeaf/dpi
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=exec
+ExecStartPre=/opt/dpi/scripts/runtime.sh firewall-start
+ExecStart=/opt/dpi/scripts/runtime.sh start
+ExecStopPost=/opt/dpi/scripts/runtime.sh firewall-stop
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+UMask=0022
+RuntimeDirectory=dpi
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

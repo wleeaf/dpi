@@ -5,7 +5,12 @@
 #include "win.h"
 #include "nfqws.h"
 
-#define SERVICE_NAME "winws"
+#ifndef ZAPRET_SERVICE_NAME
+#define ZAPRET_SERVICE_NAME winws
+#endif
+#define SERVICE_STRING_(value) #value
+#define SERVICE_STRING(value) SERVICE_STRING_(value)
+#define SERVICE_NAME SERVICE_STRING(ZAPRET_SERVICE_NAME)
 
 static SERVICE_STATUS ServiceStatus;
 static SERVICE_STATUS_HANDLE hStatus = NULL;

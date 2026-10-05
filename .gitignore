@@ -11,3 +11,17 @@ ipset/zapret-hosts*.txt
 ipset/zapret-hosts*.gz
 .claude/
 
+# Machine-specific upstream configuration and generated builds/releases
+/config
+/binaries/my/
+/bin/
+/dist/
+__pycache__/
+/android/.gradle/
+/android/local.properties
+/android/**/build/
+/android/app/libs/
+/android/*.jks
+/android/*.keystore
+/windows/bin/
+/windows/third-party/

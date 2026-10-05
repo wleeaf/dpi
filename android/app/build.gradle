@@ -1,0 +1,37 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'io.github.wleeaf.dpi'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'io.github.wleeaf.dpi'
+        minSdk 29
+        targetSdk 36
+        versionCode Integer.parseInt(System.getenv('DPI_VERSION_CODE') ?: '1')
+        versionName System.getenv('DPI_VERSION_NAME') ?: '0.1.0-dev'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    signingConfigs {
+        release {
+            def keyFile = System.getenv('DPI_ANDROID_KEYSTORE')
+            if (keyFile) {
+                storeFile file(keyFile)
+                storePassword System.getenv('DPI_ANDROID_STORE_PASSWORD')
+                keyAlias System.getenv('DPI_ANDROID_KEY_ALIAS') ?: 'dpi'
+                keyPassword System.getenv('DPI_ANDROID_KEY_PASSWORD') ?: System.getenv('DPI_ANDROID_STORE_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (System.getenv('DPI_ANDROID_KEYSTORE')) signingConfig signingConfigs.release
+        }
+    }
+    sourceSets.main.assets.srcDir '../../profiles'
+}
+
+dependencies { implementation files('libs/hev-socks5-tunnel.aar') }

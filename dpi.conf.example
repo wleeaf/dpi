@@ -1,0 +1,9 @@
+# Edit /etc/dpi/dpi.conf, then run: sudo dpi restart
+# Plain KEY=VALUE settings; shell commands and unknown settings are rejected.
+
+# discord: only Discord web domains; all: every HTTP/HTTPS domain.
+PROFILE=discord
+# default: fake + split/disorder; split: segmentation without fake TCP packets.
+STRATEGY=default
+# Process Discord voice discovery packets on UDP ports 50000-50099.
+VOICE=yes

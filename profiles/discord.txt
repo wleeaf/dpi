@@ -1,0 +1,8 @@
+# Subdomains are included automatically by nfqws.
+discord.com
+discord.gg
+discordapp.com
+discordapp.net
+discordcdn.com
+discord.media
+discordstatus.com

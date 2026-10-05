@@ -1,0 +1,63 @@
+name: Windows build and test
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        default: dev
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - run: git config --global core.autocrlf input
+      - uses: actions/checkout@v7
+      - name: Ensure the Windows networking API is available
+        shell: powershell
+        run: |
+          if (-not (Test-Path "$env:SystemRoot/System32/wlanapi.dll")) {
+              Install-WindowsFeature Wireless-Networking
+          }
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: cygwin/cygwin-install-action@v6
+        with:
+          install-dir: 'C:\cygwin'
+          add-to-path: false
+          packages: gcc-core make zlib-devel
+      - name: Build the native Windows service engine
+        shell: C:\cygwin\bin\bash.exe --noprofile --norc -eo pipefail -o igncr {0}
+        env:
+          DPI_VERSION_NAME: ${{ inputs.version }}
+          BUILD_COMMIT: ${{ github.sha }}
+        run: PATH=/usr/bin:$PATH bash scripts/build-windows.sh
+      - name: Fetch verified driver and dependency sources
+        run: |
+          python scripts/fetch-windivert.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/fetch-cygwin-sources.py C:/cygwin/etc/setup/installed.db
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Validate presets with Windows PowerShell and the real engine
+        shell: powershell
+        run: ./tests/windows-core.ps1
+      - name: Package
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: ./scripts/package-windows.ps1 -Version $env:RELEASE_VERSION
+      - name: Test native service lifecycle
+        shell: powershell
+        run: |
+          $archive = (Get-ChildItem dist/dpi-*-windows-x86_64.zip | Select-Object -First 1).FullName
+          ./tests/windows-service.ps1 -Archive $archive
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dpi-windows-x86_64
+          path: |
+            dist/dpi-*.zip
+            dist/dpi-*.zip.sha256
+          if-no-files-found: error

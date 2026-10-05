@@ -1,0 +1,15 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'io.github.wleeaf.dpi.probe'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'io.github.wleeaf.dpi.probe'
+        minSdk 29
+        targetSdk 36
+        testInstrumentationRunner 'io.github.wleeaf.dpi.probe.SmokeRunner'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}

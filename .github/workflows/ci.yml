@@ -1,0 +1,32 @@
+name: Check
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    uses: ./.github/workflows/windows.yml
+  android:
+    uses: ./.github/workflows/android.yml
+  check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install build and validation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential zlib1g-dev libcap-dev libnetfilter-queue-dev libmnl-dev shellcheck nftables
+      - name: Check shell scripts
+        run: shellcheck dpi scripts/*.sh tests/*.sh enable.sh disable.sh nft-start.sh nft-stop.sh
+      - name: Build engine
+        run: make -C nfq
+      - name: Test setup and packaging
+        run: python3 -m unittest discover -s tests -v
+      - name: Check firewall syntax in an isolated network namespace
+        run: sudo unshare --net bash tests/firewall.sh

@@ -1,0 +1,246 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+TARGET="/opt/dpi"
+CONFIG_DIR="/etc/dpi"
+UNIT="/etc/systemd/system/dpi.service"
+DNS_FILE="/etc/systemd/resolved.conf.d/90-dpi.conf"
+
+fail() { echo "Error: $*" >&2; exit 1; }
+root_required() { [[ $(id -u) == 0 ]] || fail "Run this command with sudo."; }
+system_required() {
+    [[ $(uname -s) == Linux && -d "/run/systemd/system" ]] || fail "Easy setup requires Linux with systemd. See README.md for other platforms."
+    command -v systemctl >/dev/null || fail "systemctl is missing."
+}
+installed() { [[ -f "$UNIT" && -x "$TARGET/bin/nfqws" ]] || fail "Install first: sudo ./dpi install"; }
+no_legacy_service() {
+    if systemctl is-active --quiet zapret.service || systemctl is-enabled --quiet zapret.service; then
+        fail "Existing zapret service detected. Run sudo systemctl disable --now zapret before using dpi."
+    fi
+}
+
+dependencies() {
+    local binary=$1
+    if command -v nft >/dev/null && "$binary" --version >/dev/null 2>&1; then
+        return
+    fi
+    echo "Installing nftables and nfqws runtime libraries..."
+    if command -v apt-get >/dev/null; then
+        apt-get update
+        apt-get install -y nftables libnetfilter-queue1 libnfnetlink0 libmnl0 zlib1g
+    elif command -v dnf >/dev/null; then
+        dnf install -y nftables libnetfilter_queue libnfnetlink libmnl zlib-ng-compat
+    elif command -v pacman >/dev/null; then
+        pacman -S --needed --noconfirm nftables libnetfilter_queue libnfnetlink libmnl zlib
+    else
+        fail "Install nftables, libnetfilter_queue, libnfnetlink, libmnl and zlib with your package manager, then retry."
+    fi
+    "$binary" --version >/dev/null || fail "nfqws cannot run on this system. Check the release architecture and glibc version."
+}
+
+dns_content() {
+    cat <<'EOF'
+# Managed by dpi. Remove with: sudo dpi dns off
+[Resolve]
+DNS=1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com
+FallbackDNS=
+DNSOverTLS=yes
+Domains=~.
+EOF
+}
+dns_owned() { [[ -f "$DNS_FILE" ]] && cmp -s "$DNS_FILE" <(dns_content); }
+dns_on() {
+    systemctl is-active --quiet systemd-resolved || fail "DNS setup requires an active systemd-resolved service. Configure encrypted DNS in your network settings instead."
+    [[ ! -e "$DNS_FILE" ]] || dns_owned || fail "$DNS_FILE already exists and differs from dpi's settings."
+    mkdir -p "$(dirname -- "$DNS_FILE")"
+    dns_content > "$DNS_FILE"
+    chmod 644 "$DNS_FILE"
+    systemctl restart systemd-resolved
+    echo "DNS over TLS enabled. Review the resolver with: resolvectl status"
+}
+dns_off() {
+    if [[ -e "$DNS_FILE" ]]; then
+        dns_owned || fail "$DNS_FILE was edited; remove it manually to preserve your changes."
+        rm -- "$DNS_FILE"
+        systemctl restart systemd-resolved
+    fi
+    echo "dpi's DNS override removed."
+}
+
+install_dpi() {
+    local no_start=no with_dns=no stage=${DESTDIR:-} binary
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --no-start) no_start=yes ;;
+            --dns) with_dns=yes ;;
+            *) fail "Unknown install option: $1" ;;
+        esac
+        shift
+    done
+    if [[ -n "$stage" ]]; then
+        [[ "$stage" == /* && "$stage" != / ]] || fail "DESTDIR must be an absolute staging directory other than /."
+        stage=$(realpath -m -- "$stage")
+        [[ "$stage" != / ]] || fail "DESTDIR must not resolve to /."
+        [[ "$with_dns" == no ]] || fail "--dns cannot be used with DESTDIR."
+        no_start=yes
+    else
+        root_required
+        system_required
+        no_legacy_service
+        if [[ "$with_dns" == yes ]]; then
+            systemctl is-active --quiet systemd-resolved || fail "--dns requires active systemd-resolved. Retry without --dns."
+            [[ ! -e "$DNS_FILE" ]] || dns_owned || fail "$DNS_FILE already exists and differs from dpi's settings."
+        fi
+    fi
+    if [[ -x "$BASE/bin/nfqws" ]]; then
+        binary="$BASE/bin/nfqws"
+    elif [[ -x "$BASE/nfq/nfqws" ]]; then
+        binary="$BASE/nfq/nfqws"
+    else
+        fail "No compiled nfqws found. Download a release archive, or run make -C nfq first."
+    fi
+    [[ "$BASE" != "$TARGET" ]] || fail "Run install from a newly extracted release or source checkout."
+    if [[ -z "$stage" ]]; then
+        dependencies "$binary"
+        # Check all selected settings/payloads before stopping an existing service.
+        local validate
+        validate=$(mktemp -d)
+        mkdir -p "$validate/bin" "$validate/scripts"
+        ln -s "$binary" "$validate/bin/nfqws"
+        ln -s "$BASE/profiles" "$validate/profiles"
+        ln -s "$BASE/files" "$validate/files"
+        cp "$BASE/scripts/runtime.sh" "$validate/scripts/"
+        local selected_config="$CONFIG_DIR/dpi.conf"
+        [[ -f "$selected_config" ]] || selected_config="$BASE/dpi.conf.example"
+        if ! DPI_CONFIG="$selected_config" "$validate/scripts/runtime.sh" check; then
+            rm -rf -- "$validate"
+            fail "Configuration validation failed; existing installation was preserved."
+        fi
+        rm -rf -- "$validate"
+        if systemctl is-active --quiet dpi.service; then
+            systemctl stop dpi.service
+        fi
+    fi
+    mkdir -p "$stage$TARGET/bin" "$stage$TARGET/scripts" "$stage$TARGET/profiles" \
+        "$stage$TARGET/files/fake" "$stage$CONFIG_DIR" "$stage/etc/systemd/system" "$stage/usr/local/bin"
+    install -m 755 "$binary" "$stage$TARGET/bin/nfqws"
+    install -m 755 "$BASE/dpi" "$stage$TARGET/dpi"
+    install -m 755 "$BASE/scripts/runtime.sh" "$stage$TARGET/scripts/runtime.sh"
+    install -m 644 "$BASE/profiles/discord.txt" "$stage$TARGET/profiles/discord.txt"
+    local payload
+    for payload in tls_clienthello_www_google_com quic_initial_www_google_com discord-ip-discovery-with-port; do
+        install -m 644 "$BASE/files/fake/$payload.bin" "$stage$TARGET/files/fake/$payload.bin"
+    done
+    install -m 644 "$BASE/packaging/dpi.service" "$stage$UNIT"
+    install -m 644 "$BASE/README.md" "$BASE/LICENSE" "$BASE/dpi.conf.example" "$stage$TARGET/"
+    install -d "$stage$TARGET/docs"
+    install -m 644 "$BASE/docs/LINUX.md" "$BASE/docs/DEVELOPMENT.md" "$stage$TARGET/docs/"
+    if [[ ! -e "$stage$CONFIG_DIR/dpi.conf" ]]; then
+        install -m 644 "$BASE/dpi.conf.example" "$stage$CONFIG_DIR/dpi.conf"
+    fi
+    ln -sfn "$TARGET/dpi" "$stage/usr/local/bin/dpi"
+    if [[ -z "$stage" ]]; then
+        systemctl daemon-reload
+        [[ "$with_dns" == no ]] || dns_on
+        if [[ "$no_start" == no ]]; then
+            systemctl enable dpi.service
+            start_dpi
+        fi
+    fi
+    echo "Installed. Settings: $CONFIG_DIR/dpi.conf"
+}
+
+start_dpi() {
+    installed
+    no_legacy_service
+    "$TARGET/scripts/runtime.sh" check
+    systemctl restart dpi.service
+    sleep 1
+    if ! systemctl is-active --quiet dpi.service; then
+        journalctl -u dpi.service -n 20 --no-pager
+        fail "Service failed to start."
+    fi
+    echo "DPI bypass is running. Restart Discord to open fresh connections."
+}
+
+doctor() {
+    local failed=0
+    echo "System: $(uname -sm)"
+    if [[ -f "$UNIT" && -x "$TARGET/bin/nfqws" ]]; then
+        "$TARGET/scripts/runtime.sh" check || failed=1
+        systemctl --no-pager --full status dpi.service || failed=1
+    else
+        echo "dpi is not installed."; failed=1
+    fi
+    if command -v getent >/dev/null; then
+        if ! getent ahosts discord.com; then
+            echo "Discord DNS lookup failed. Check encrypted DNS settings."; failed=1
+        fi
+    fi
+    if command -v curl >/dev/null; then
+        if curl -I --connect-timeout 5 --max-time 10 --silent --show-error https://discord.com; then
+            echo "Discord HTTPS endpoint reached; this does not test login or voice."
+        else
+            echo "Discord HTTPS check failed. Try STRATEGY=split or check DNS."; failed=1
+        fi
+    else
+        echo "Install curl to include the HTTPS connectivity check."
+    fi
+    if [[ -f "/etc/systemd/resolved.conf.d/dot.conf" ]]; then
+        echo "An older dot.conf DNS override exists. Inspect it if migrating from enable.sh."
+    fi
+    return "$failed"
+}
+
+usage() {
+    cat <<'EOF'
+Usage: dpi <command>
+  install [--no-start] [--dns]  Install; start now and at boot by default
+  start | restart             Start or reload settings
+  stop                        Stop now (boot setting is preserved)
+  enable | disable            Enable/start or disable/stop at boot
+  status                      Show service status
+  logs                        Show the last 50 log entries
+  doctor                      Check settings, service, DNS and Discord HTTPS
+  dns on | dns off            Add/remove dpi's encrypted DNS override
+  uninstall                   Remove dpi; keep /etc/dpi for a later install
+EOF
+}
+
+command=${1:-help}
+[[ $# == 0 ]] || shift
+case "$command" in
+    install) install_dpi "$@" ;;
+    help|-h|--help) usage ;;
+    status|logs|doctor)
+        [[ $# == 0 ]] || fail "Unexpected arguments."
+        system_required
+        case "$command" in
+            status) systemctl --no-pager --full status dpi.service ;;
+            logs) journalctl -u dpi.service -n 50 --no-pager ;;
+            doctor) doctor ;;
+        esac ;;
+    start|restart|stop|enable|disable|dns|uninstall)
+        [[ "$command" == dns || $# == 0 ]] || fail "Unexpected arguments."
+        root_required; system_required; installed
+        case "$command" in
+            start|restart) start_dpi ;;
+            stop) systemctl stop dpi.service ;;
+            enable) systemctl enable dpi.service; start_dpi ;;
+            disable) systemctl disable --now dpi.service ;;
+            dns)
+                [[ $# == 1 ]] || fail "Usage: dpi dns {on|off}"
+                case "$1" in on) dns_on ;; off) dns_off ;; *) fail "Usage: dpi dns {on|off}" ;; esac ;;
+            uninstall)
+                # Refuse to remove an edited DNS override before changing anything.
+                [[ ! -e "$DNS_FILE" ]] || dns_owned || fail "$DNS_FILE was edited; remove it manually first."
+                systemctl disable --now dpi.service
+                dns_off
+                rm -f -- "$UNIT" "/usr/local/bin/dpi"
+                rm -rf -- "$TARGET"
+                systemctl daemon-reload
+                echo "Uninstalled. Your settings remain in $CONFIG_DIR." ;;
+        esac ;;
+    *) usage >&2; exit 1 ;;
+esac
